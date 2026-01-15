@@ -2,18 +2,19 @@ package ocr
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	_ "image/jpeg"
 	_ "image/png"
+	"os/exec"
 	"strconv"
 	"strings"
 
 	"github.com/disintegration/imaging"
-	"github.com/otiai10/gosseract/v2"
 )
 
-func ExtractGridFromImage(img image.Image, client *gosseract.Client) ([9][9]int, error) {
+func ExtractGridFromImage(img image.Image) ([9][9]int, error) {
 	var grid [9][9]int
 
 	// Preprocessing:
@@ -25,10 +26,6 @@ func ExtractGridFromImage(img image.Image, client *gosseract.Client) ([9][9]int,
 	procImg := imaging.Grayscale(img)
 	procImg = imaging.Resize(procImg, 900, 900, imaging.Lanczos)
 	procImg = binarize(procImg, 140) // Reduced threshold to keep lines thicker
-
-	// Dilation: Make text bolder to help Tesseract
-	// Since imaging/v1 doesn't have Dilate/Erode, we can simulate or skip.
-	// Often Tesseract prefers clearer text.
 
 	cellWidth := 100
 	cellHeight := 100
@@ -58,16 +55,18 @@ func ExtractGridFromImage(img image.Image, client *gosseract.Client) ([9][9]int,
 				return grid, err
 			}
 
-			client.SetImageFromBytes(buf.Bytes())
-			client.SetPageSegMode(gosseract.PSM_SINGLE_CHAR)
-			client.SetWhitelist("123456789")
+			// Call Tesseract CLI
+			// tesseract stdin stdout --psm 10 -c tessedit_char_whitelist=123456789
+			cmd := exec.Command("tesseract", "stdin", "stdout", "--psm", "10", "-c", "tessedit_char_whitelist=123456789")
+			cmd.Stdin = buf
+			var out bytes.Buffer
+			cmd.Stdout = &out
 
-			text, err := client.Text()
-			if err != nil {
-				return grid, err
+			if err := cmd.Run(); err != nil {
+				return grid, fmt.Errorf("OCR error: %v (Is Tesseract installed?)", err)
 			}
 
-			text = strings.TrimSpace(text)
+			text := strings.TrimSpace(out.String())
 			if text != "" {
 				val, err := strconv.Atoi(text)
 				if err == nil && val >= 1 && val <= 9 {

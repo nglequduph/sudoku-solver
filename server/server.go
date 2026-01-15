@@ -12,7 +12,6 @@ import (
 
 	"example.com/sdk/ocr"
 	"example.com/sdk/solver"
-	"github.com/otiai10/gosseract/v2"
 )
 
 type PageData struct {
@@ -89,11 +88,8 @@ func OCRHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := gosseract.NewClient()
-	defer client.Close()
-
 	log.Println("Starting OCR extraction...")
-	inputGrid, err := ocr.ExtractGridFromImage(img, client)
+	inputGrid, err := ocr.ExtractGridFromImage(img)
 	if err != nil {
 		renderError(w, "OCR Failed: "+err.Error())
 		return
