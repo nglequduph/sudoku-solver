@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sudoku Solver</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 40px;
+        text-align: center;
+        background-color: #fafafa;
+      }
+      h1 {
+        margin-bottom: 5px;
+      }
+      p {
+        color: #666;
+        margin-bottom: 30px;
+      }
+
+      .sudoku-board {
+        display: inline-grid;
+        grid-template-columns: repeat(9, 46px);
+        gap: 0;
+        border: 4px solid #333;
+        background-color: #333;
+      }
+
+      .cell-input {
+        width: 44px;
+        height: 44px;
+        border: 1px solid #ccc;
+        text-align: center;
+        font-size: 20px;
+        margin: 0;
+        padding: 0;
+        outline: none;
+        /* Remove spinners */
+        -moz-appearance: textfield;
+      }
+      .cell-input::-webkit-outer-spin-button,
+      .cell-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      /* Thick borders for 3x3 blocks */
+      .cell-input:nth-child(3n) {
+        margin-right: 2px;
+      }
+      .cell-input:nth-child(9n) {
+        margin-right: 0;
+      }
+
+      /* Horizontal separators hack: use CSS Grid gap or margin on rows? 
+         Easier: target specific indices if flattened, or just classes.
+         Since we iterate row by row in a flattened grid container, 
+         we can use nth-child logic on the inputs.
+      */
+      .cell-input:nth-child(n + 19):nth-child(-n + 27),
+      .cell-input:nth-child(n + 46):nth-child(-n + 54) {
+        border-bottom: 3px solid #333;
+      }
+      .cell-input:nth-child(3n) {
+        border-right: 3px solid #333;
+      }
+      .cell-input:nth-child(9n) {
+        border-right: 1px solid #ccc;
+      }
+
+      .original {
+        background-color: #e0e0e0;
+        font-weight: bold;
+        color: #000;
+      }
+      .solved {
+        color: #007aff;
+        background-color: #fff;
+      }
+
+      .btn-solve {
+        margin-top: 25px;
+        padding: 12px 30px;
+        font-size: 18px;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      .btn-solve:hover {
+        background-color: #218838;
+      }
+
+      .status-msg {
+        margin-top: 20px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Go Sudoku Solver</h1>
+
+    <!-- OCR Section -->
+    <div
+      style="
+        background: #eef;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: inline-block;
+      "
+    >
+      <form action="/ocr" method="post" enctype="multipart/form-data">
+        <label><b>Step 1 (Optional):</b> Upload Image to Auto-Fill</label><br />
+        <small style="color: #666">Crop tightly to the grid!</small><br /><br />
+        <input type="file" name="image" accept="image/*" required />
+        <button type="submit" style="cursor: pointer">Run OCR</button>
+      </form>
+    </div>
+
+    <p><b>Step 2:</b> Review/Enter numbers and click Solve</p>
+
+    <form action="/solve" method="post">
+      <div class="sudoku-board">
+        {{range $r, $row := .Grid}} {{range $c, $val := $row}} {{$isOrig :=
+        false}} {{if $.IsOriginal}} {{$isOrig = call $.IsOriginal $r $c}}
+        {{end}}
+
+        <input
+          type="number"
+          name="cell-{{$r}}-{{$c}}"
+          class="cell-input {{if $isOrig}}original{{else if $.Solved}}solved{{end}}"
+          min="1"
+          max="9"
+          value="{{if ne $val 0}}{{$val}}{{end}}"
+        />
+        {{end}} {{end}}
+      </div>
+      <br />
+      <button type="submit" class="btn-solve">Solve Puzzle</button>
+    </form>
+
+    {{if .Done}} {{if .Solved}}
+    <div class="status-msg" style="color: green">
+      Solution found in {{.Steps}} steps!
+    </div>
+    {{else}}
+    <div class="status-msg" style="color: orange">
+      No solution found (or invalid input).
+    </div>
+    {{end}} {{end}} {{if .Error}}
+    <div class="status-msg" style="color: red">Error: {{.Error}}</div>
+    {{end}}
+  </body>
+</html>
